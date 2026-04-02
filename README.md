@@ -1,5 +1,5 @@
-# TANGO-North-RFs
-Receiver Function Scripts and Workflows used to produce the manuscript "The Anatomy of a Modern Cordillera Style Mountain System:  Northern Chile and Argentina"
+# TANGO-South-RFs
+Receiver Function Scripts and Workflows used to produce the manuscript "Anatomy of a Modern Cordilleran Mountain Belt: The South-Central Andes of Chile and Argentina"
 
 The generalized receiver function workflow follows the outline provided in the article "On the Viability of Using Autonomous Three‐Component Nodal Geophones to Calculate Teleseismic 
 Ps Receiver Functions with an Application to Old Faithful, Yellowstone" by Dr. Kevin Ward and Dr. Fan-Chi Lin. Using the archived public data from EarthScope seismic data center repositories, users 
