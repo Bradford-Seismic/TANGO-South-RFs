@@ -32,7 +32,8 @@ import xarray as xr
 from math import radians, sin, cos, sqrt, atan2
 
 
-os.chdir('.')
+os.chdir('/Users/jimbradford/TANGO_South/SCRIPTING')
+# os.chdir('/tango/bradford/TANGO_South/SCRIPTING')
 
 
 
@@ -418,22 +419,21 @@ with pygmt.config(FONT = '16p'):
 
 
     # Plot velocity grids
-
-
+    
     with xr.open_dataset('../DATA/MAPPING/nc_models/BlendedModel_CSEM2-Hicks2014_vp.nc') as model:
         model_slice = model.interp(longitude = x, latitude = y, method = 'linear', kwargs={"fill_value": None})
         model_slice = model_slice.assign_coords({'Distance_Along_Trend': line_dist})
         
         model_slice = model_slice.where(model_slice.Distance_Along_Trend < 200)        
-        fig.grdcontour(grid = model_slice['vp'], annotation = 0.5)
+        fig.grdcontour(grid = model_slice['vp'], annotation = '0.5+f16p', pen = '1.5p,black')
     
     
     with xr.open_dataset('../DATA/MAPPING/nc_models/Hicks2014_vpvs.nc') as model:
         model_slice = model.interp(longitude = x, latitude = y, method = 'linear', kwargs={"fill_value": None})
         model_slice = model_slice.assign_coords({'Distance_Along_Trend': line_dist})
         
-        fig.grdcontour(grid = model_slice['vpvs'], annotation = 0.1, pen = '1p,red,dashed')
-        fig.grdcontour(grid = model_slice['vpvs'], annotation = [1.85], pen = '1p,red,dashed')
+        fig.grdcontour(grid = model_slice['vpvs'], annotation = '0.1+f14p', pen = '1p,red,dashed')
+        fig.grdcontour(grid = model_slice['vpvs'], annotation = '1.85+14p', pen = '1p,red,dashed')
 
     
 
@@ -469,32 +469,6 @@ with pygmt.config(FONT = '16p'):
     reidel_projected_eqs =  reidel[reidel.id.isin(track.eq_id.astype(int))].reset_index(drop = True)
 
 
-    # lieser = pd.read_csv('../DATA/MAPPING/Lieser_2024_EQs.txt', delimiter = ' ')
-    # lieser['id'] = lieser.index
-    # eq_data = lieser[['LONG', 'LAT', 'DEPTH', 'id']]
-    # used_data = []
-    # for i in range(len(joints[0:2]) - 1): # constricting the joints cycle so we can see EQ data (no changes to image occur)
-    #     track = pygmt.project(data=eq_data, center=joints[i], endpoint=joints[i+1], width=[
-    #                           -20, 20], length=[0, joints_dist[i+1] - joints_dist[i]], unit=True)
-    #     track = track.rename(columns={
-    #                          0: 'longitude', 1: 'latitude', 2: 'depth', 3: 'eq_id', 4: 'p', 5: 'q', 6: 'r', 7: 's'})
-
-    #     if len(track) > 0:
-    #         try:
-    #             data_used_check = [track.eq_id[j]
-    #                                in used_data for j in range(len(track))]
-    #             data_used_check = [not (bool(data_used_check[j]))
-    #                                for j in range(len(data_used_check))]
-    #             track = track[data_used_check].reset_index(drop=True)
-    #             used_data = np.append(
-    #                 used_data, np.unique(track.eq_id.values))
-
-    #             fig.plot(x=track.p + joints_dist[i], y=track.depth,
-    #                      style='c0.1c', fill='purple', pen='0.1p,black')
-    #         except:
-    #             pass
-            
-    # lieser_projected_eqs =  lieser[lieser.id.isin(track.eq_id.astype(int))].reset_index(drop = True)
 
 
 
@@ -519,6 +493,8 @@ with pygmt.config(FONT = '16p'):
 
 
 
+
+    ## Shift to bottom interpretation panel
     
     fig.shift_origin(yshift = f'-{fig_y+0.5}c')
 
@@ -542,6 +518,180 @@ with pygmt.config(FONT = '16p'):
     
     with pygmt.config(FONT_ANNOT_PRIMARY="20p", FONT_LABEL="20p"):
         fig.colorbar(cmap = True, position = 'JMR+w{}/0.25c+o0.25c/0c'.format(fig_y), frame = 'xa.5f.1+lAmplitude')
+
+
+    
+    # Plot EQs  
+    
+    reidel = pd.read_csv('../DATA/MAPPING/ReidelHornig2025_EQs.csv')
+    reidel = reidel[(reidel.Lat < -30) & (reidel.Lat > -40)][reidel.Lat_Error < 10][reidel.Lon_Error < 10][reidel.Dep_Error < 10]
+    reidel.Dep = reidel.Dep * -1
+    eq_data = reidel[['Lon', 'Lat', 'Dep', 'id']]
+    
+    used_data = []
+    for i in range(len(joints[0:2]) - 1): # constricting the joints cycle so we can see EQ data (no changes to image occur)
+        track = pygmt.project(data=eq_data, center=joints[i], endpoint=joints[i+1], width=[
+                              -20, 20], length=[0, joints_dist[i+1] - joints_dist[i]], unit=True)
+        track = track.rename(columns={
+                             0: 'longitude', 1: 'latitude', 2: 'depth', 3: 'eq_id', 4: 'p', 5: 'q', 6: 'r', 7: 's'})
+
+        if len(track) > 0:
+            try:
+                data_used_check = [track.eq_id[j]
+                                   in used_data for j in range(len(track))]
+                data_used_check = [not (bool(data_used_check[j]))
+                                   for j in range(len(data_used_check))]
+                track = track[data_used_check].reset_index(drop=True)
+                used_data = np.append(
+                    used_data, np.unique(track.eq_id.values))
+
+                fig.plot(x=track.p + joints_dist[i], y=track.depth,
+                         style='c0.05c', fill='green', pen='0.1p,black')
+            except:
+                pass
+            
+    reidel_projected_eqs =  reidel[reidel.id.isin(track.eq_id.astype(int))].reset_index(drop = True)
+
+  
+        
+    # # Plot Cordell et al., 2019
+    # with xr.open_dataset('../DATA/MAPPING/nc_models/Cordell2019_MT_model_constrained.nc') as model:
+        
+    #     # project the MT columns onto A-B, same pygmt.project call as the EQs in Figure6
+    #     mt_cols = pd.DataFrame({'longitude': model.longitude.values, 'latitude': model.latitude.values,
+    #                             'col': np.arange(len(model.Distance_Along_Trend))})
+
+    #     track = pygmt.project(data=mt_cols, center=joints[0], endpoint=joints[1], width=[
+    #                           -20, 20], length=[0, joints_dist[1]], unit=True)
+    #     track = track.rename(columns={0: 'longitude', 1: 'latitude', 2: 'col', 3: 'p', 4: 'q', 5: 'r', 6: 's'})
+    #     track['col'] = track.col.astype(int)
+
+    #     # print('{} of {} MT columns project onto A-B, offset from line {:.1f} to {:.1f} km'.format(
+    #     #        len(track), len(mt_cols), track.q.min(), track.q.max()))
+
+        
+    #     mt_proj = model.log10_Resistivity.isel(Distance_Along_Trend = track.col.values)
+    #     mt_proj = mt_proj.assign_coords({'Distance_Along_Trend': track.p.values}).drop_vars(['longitude', 'latitude'])
+    #     mt_proj = mt_proj.sortby('Distance_Along_Trend')
+        
+    #     dx, dz = 5.0, 1
+    #     xi = np.arange(xlim[0], xlim[1] + dx, dx)
+    #     zi = np.arange(0, z_lim + dz, dz)
+    #     mt_slice = mt_proj.interp(Distance_Along_Trend = xi, depth = zi, method = 'linear')
+    #     mt_slice = mt_slice.transpose('depth', 'Distance_Along_Trend')
+
+    #     mt_slice = mt_proj.interp(Distance_Along_Trend = xi, depth = zi, method = 'linear')
+    #     mt_slice = mt_slice.transpose('depth', 'Distance_Along_Trend')
+        
+    #     # truncate values to be within scale range (otherwise >4 plots black)
+    #     mt_slice = mt_slice.clip(0, 4)
+
+    # pygmt.makecpt(cmap = 'jet', series = [0, 4, 0.1], continuous = True, reverse = True)
+    # fig.grdimage(grid = mt_slice, cmap = True, nan_transparent = True, transparency = 70)
+    # # fig.grdcontour(grid = mt_slice, levels = [1])
+    
+
+    
+    
+    
+    
+    
+  
+    with xr.open_dataset('../DATA/MAPPING/nc_models/Cordell2019_MT_model_constrained.nc') as model:
+  
+          # latitude of A-B at each MT column's longitude (straight line in lon/lat, as in Return_Line_Elements)
+          mt_lon = model.longitude.values
+          mt_lat = model.latitude.values
+      
+          frac = (mt_lon - joints[0,0]) / (joints[1,0] - joints[0,0])
+          line_lat = joints[0,1] + frac * (joints[1,1] - joints[0,1])
+      
+      
+          # distance along A-B (p) and north-south offset from A-B (q, positive = MT column north of line)
+          p_ns = np.array([haversine(joints[0,1], joints[0,0], line_lat[i], mt_lon[i]) for i in range(len(mt_lon))])
+          q_ns = np.array([haversine(line_lat[i], mt_lon[i], mt_lat[i], mt_lon[i]) for i in range(len(mt_lon))]) * np.sign(mt_lat - line_lat)
+      
+          keep = (frac >= 0) & (frac <= 1) & (np.abs(q_ns) <= 20)
+      
+          print('{} of {} MT columns project N-S onto A-B, offset from line {:.1f} to {:.1f} km'.format(
+                 keep.sum(), len(mt_lon), q_ns[keep].min(), q_ns[keep].max()))
+      
+      
+          mt_proj_ns = model.Resistivity.isel(Distance_Along_Trend = np.where(keep)[0])
+          mt_proj_ns = mt_proj_ns.assign_coords({'Distance_Along_Trend': p_ns[keep]}).drop_vars(['longitude', 'latitude'])
+          mt_proj_ns = mt_proj_ns.sortby('Distance_Along_Trend')
+          
+          dx, dz = 5.0, 1
+          xi = np.arange(xlim[0], xlim[1] + dx, dx)
+          zi = np.arange(0, 95 + dz, dz)
+  
+      
+      
+          # resample to a regular distance-depth grid for grdimage (NaN outside the MT columns)
+          mt_slice_ns = mt_proj_ns.interp(Distance_Along_Trend = xi, depth = zi, method = 'linear')
+          mt_slice_ns = mt_slice_ns.transpose('depth', 'Distance_Along_Trend')
+      
+          # truncate values to be within scale range (otherwise >4 plots black)
+          mt_slice_ns = mt_slice_ns.clip(0, 10000)
+      
+    # pygmt.makecpt(cmap = 'jet', series = [np.log10(1), np.log10(10000), 0.1], log = True, continuous = True, reverse = True)    # log-spaced cpt in ohm-m
+    # fig.grdimage(grid = mt_slice_ns, cmap = True, nan_transparent = True)
+    
+    conductive = mt_slice_ns.copy()
+    fig.grdimage(grid = conductive, cmap = 'red')
+    
+    
+    
+    fig.grdcontour(grid = mt_slice_ns, annotation = '200,+f14p', pen = '2p,blue,dashed')
+    fig.grdcontour(grid = mt_slice_ns, annotation = '500,+f14p', pen = '2p,blue,dashed')
+    fig.grdcontour(grid = mt_slice_ns, annotation = '1000,+f14p', pen = '2p,red,dashed')
+
+
+
+    # Plot focal mechanism for Maule 2010
+    # USGS Solution
+    maule_2010 = pd.DataFrame({'Longitude': [-72.898], 'Latitude':[ -36.122], 'Depth': [22.9],  'Strike2': [17], 'Dip2': [14], 'Rake2': [86], 'Mw': [8.8]})
+    maule_2010.to_csv('./maule_2010.txt', index = False, header = False, sep = ' ')   
+    with Session() as lib:
+        # Build the exact command-line arguments string for GMT coupe
+        cross_region = "/".join(np.array(grid_region).astype(str).tolist())
+        cross_profile = "/".join(np.array([joints[0,0], joints[0,1], joints[1,0], joints[1,1], 90, 200, 0, 120]).astype(str).tolist())
+        args = f"./maule_2010.txt -R{cross_region} -J{prj} -Aa{cross_profile} -Sa0.4c -W0.5p,black"
+
+        # Execute the GMT module 'coupe'
+        lib.call_module(module="coupe", args=args)
+
+
+    fig.basemap(region=grid_region, projection=prj, frame=['Wsne', 'xa100f10g50+lProfile Distance (km)', 'ya20f10g50+lDepth b.s.l. (km)'])
+
+
+
+
+    ## Shift to bottom interpretation panel
+    
+    fig.shift_origin(yshift = f'-{fig_y+0.5}c')
+
+    fig.basemap(region=grid_region, projection=prj, frame=['wsne', 'xa50f10g50+lProfile Distance (km)', 'ya20f10g50+lDepth (km)'])
+
+    with xr.open_dataset('../DATA/MAPPING/nc_models/CCP_TANGO_South_G-5.0_FZB_CSEM2-Hicks2014-vp_Hick2014-Hk-vp-csem2_vpvs.nc') as model:
+        model_slice = model.interp(longitude = x, latitude = y, method = 'linear', kwargs={"fill_value": None})
+        model_slice = model_slice.assign_coords({'Distance_Along_Trend': line_dist})
+        model_slice['depth'] = -model_slice['depth']
+        
+        # truncate model_slice values to be within scale range
+        model_slice['Amplitude'].values = np.clip(model_slice['Amplitude'].values, -0.5, 0.5)
+    
+        # nan grid space with bins less than bin hit limit
+        model_slice['Amplitude'].values[np.where(model_slice['Bin_Hits'] < bin_hits_limit)] = np.nan
+        model_slice['Amplitude'].values[np.where(model_slice['Bin_Hits_std'] < std_hits_limit)] = np.nan
+        model_slice['Amplitude'].values[np.where(model_slice['Bootstrap_std'] > std_limit)] = np.nan
+
+    grid_color = pygmt.makecpt(cmap = '../DATA/MAPPING/no_green.cpt',   series = [-0.5, 0.5], continuous = True, transparency = 50)
+    fig.grdimage(grid = model_slice['Amplitude'], transparency = 50)
+    
+    with pygmt.config(FONT_ANNOT_PRIMARY="20p", FONT_LABEL="20p"):
+        fig.colorbar(cmap = True, position = 'JMR+w{}/0.25c+o0.25c/0c'.format(fig_y), frame = 'xa.5f.1+lAmplitude')
+        
 
 
     # Plot focal mechanism for Maule 2010
